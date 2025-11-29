@@ -13,19 +13,25 @@ async def parse_quiz_page(page_text: str, current_url: str) -> Dict[str, Any]:
 
     submit_url = None
 
-    # 1) Try absolute URL pattern
-    m_abs = re.search(
-        r"Post your answer to\s+(https?://\S+)",
-        page_text,
-        flags=re.IGNORECASE,
-    )
-    if m_abs:
-        submit_url = m_abs.group(1)
+    # 0) Most generic & robust: any https://.../submit in the page text
+    m_submit = re.search(r"https?://[^\s\"']*/submit", page_text)
+    if m_submit:
+        submit_url = m_submit.group(0)
 
-    # 2) Generic "POST ... to /something"
+    # 1) Fallback: "Post your answer to https://..."
+    if not submit_url:
+        m_abs = re.search(
+            r"Post your answer to\s+(https?://\S+)",
+            page_text,
+            flags=re.IGNORECASE,
+        )
+        if m_abs:
+            submit_url = m_abs.group(1)
+
+    # 2) Fallback: generic "POST/POSTing ... to <url or path>"
     if not submit_url:
         m_post_to = re.search(
-            r"POST\s+.*?\s+to\s+(\S+)",
+            r"POST\w*\s+.*?\s+to\s+(\S+)",
             page_text,
             flags=re.IGNORECASE,
         )
