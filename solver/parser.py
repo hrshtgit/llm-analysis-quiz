@@ -1,6 +1,6 @@
 from typing import Dict, Any
 import re
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 
 async def parse_quiz_page(page_text: str, current_url: str) -> Dict[str, Any]:
@@ -39,12 +39,18 @@ async def parse_quiz_page(page_text: str, current_url: str) -> Dict[str, Any]:
             rel = m_post_to.group(1)
             submit_url = urljoin(current_url, rel)
 
+    # 3) Final fallback: assume same host + /submit
+    if not submit_url:
+        parsed = urlparse(current_url)
+        if parsed.scheme and parsed.netloc:
+            submit_url = f"{parsed.scheme}://{parsed.netloc}/submit"
+
     if not submit_url:
         print("Could not find submit URL. Page text snippet:")
         print(page_text[:500])
         raise ValueError("Submit URL not found on quiz page")
 
-    # 3) Look for a scrape URL (demo-scrape)
+    # 4) Look for a scrape URL (demo-scrape)
     scrape_url = None
     m_scrape = re.search(
         r"Scrape\s+(\S+)\s+\(relative to this page\)",
@@ -55,7 +61,7 @@ async def parse_quiz_page(page_text: str, current_url: str) -> Dict[str, Any]:
         rel_scrape = m_scrape.group(1)
         scrape_url = urljoin(current_url, rel_scrape)
 
-    # 4) Detect CSV/sum quiz and cutoff
+    # 5) Detect CSV/sum quiz and cutoff
     csv_cutoff = None
     csv_quiz = False
     if "csv file" in page_text.lower():
