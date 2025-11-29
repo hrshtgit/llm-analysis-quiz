@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+requests
+httpx
+playwright
+pandas
+numpy
+pypdf
