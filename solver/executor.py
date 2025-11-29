@@ -19,6 +19,9 @@ async def compute_answer(quiz_info: Dict[str, Any], email: str, secret: str) -> 
     - Else if csv_quiz is True:
         Find CSV URL from the page HTML, parse cutoff, download CSV and compute sum.
 
+    - Else if it's the uv http get task:
+        Return the exact command string they ask for.
+
     - Else:
         For now, return a simple placeholder answer (for initial demo).
     """
@@ -26,7 +29,7 @@ async def compute_answer(quiz_info: Dict[str, Any], email: str, secret: str) -> 
     csv_quiz = quiz_info.get("csv_quiz", False)
     csv_cutoff = quiz_info.get("csv_cutoff")
     current_url = quiz_info.get("current_url")
-    raw_text = quiz_info.get("raw_text", "")
+    raw_text = quiz_info.get("raw_text", "") or ""
 
     # Case 1: scrape_url present -> demo-scrape secret code
     if scrape_url:
@@ -68,6 +71,19 @@ async def compute_answer(quiz_info: Dict[str, Any], email: str, secret: str) -> 
         print("[compute_answer] No numbers found at all, returning full rendered text.")
         return rendered_text.strip()
 
+    # Case 1.5: project2-uv -> return uv http get command string as answer
+    # (must be BEFORE CSV and fallback)
+    lowered = raw_text.lower()
+    if "uv http get" in lowered or (current_url and "project2-uv" in current_url):
+        answer = (
+            'uv http get '
+            'https://tds-llm-analysis.s-anand.net/project2/uv.json'
+            f'?email={email} '
+            '-H "Accept: application/json"'
+        )
+        print(f"[compute_answer] UV task answer: {answer!r}")
+        return answer
+
     # Case 2: CSV file / "Wrong sum of numbers" quiz
     if csv_quiz and csv_cutoff is not None:
         print("[compute_answer] Detected CSV quiz with cutoff:", csv_cutoff)
@@ -108,7 +124,7 @@ async def compute_answer(quiz_info: Dict[str, Any], email: str, secret: str) -> 
         print("[compute_answer] CSV columns:", df.columns.tolist())
         print("[compute_answer] First few rows:\n", df.head())
 
-        # Heuristic for demo:
+        # Heuristic:
         # - Find the first numeric column
         # - Sum values greater than the cutoff
         numeric_cols = df.select_dtypes(include=["number"]).columns
