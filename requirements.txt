@@ -6,3 +6,4 @@ playwright
 pandas
 numpy
 pypdf
+python-dotenv
